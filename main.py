@@ -44,6 +44,7 @@ mixer.init()
 mixer.music.load("MAIN.mp3")
 mixer.music.play(-1)
 death = pygame.mixer.Sound("died.mp3")
+eat = pygame.mixer.Sound("eat2.mp3")
 
 def run_game():
 
@@ -73,7 +74,9 @@ def run_game():
 
         while game_close:
             screen.fill(black)
-            game_over_message = message_font.render("Game Over", True, red,)
+            game_over_message = message_font.render("Game Over\n"\
+            "Press Q to leave Press R to Reset"
+                , True, red,)
             pygame.mixer.Sound.play(death)
             mixer.music.stop()
             screen.blit(game_over_message, [screen_width / 10, screen_height / 10])
@@ -86,6 +89,8 @@ def run_game():
                         game_over= True
                         game_close = False
                     if event.key == pygame.K_r:
+                        
+                        mixer.music.play()
                         run_game()
                 if event.type == pygame.QUIT:
                     game_over = True
@@ -148,6 +153,8 @@ def run_game():
             target_food_x = round(random.randrange(0, screen_width-snake_size) / 15.0) * 15.0
             target_food_y = round(random.randrange(0, screen_height-snake_size) / 15.0) * 15.0
             snake_length += 1
+            
+            pygame.mixer.Sound.play(eat)
 
         clock.tick(snake_speed)
 
