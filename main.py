@@ -1,144 +1,158 @@
-import pygame, sys, random
-from pygame.constants import K_DOWN
-
-
-from pygame.draw import ellipse
-
-def ball_animation():
-    global ball_speed_x, ball_speed_y, player_score, opponent_score, pong_sound, score_sound #allows python to run code without trying to find local function (simple programming solution only)
-    #speed
-    ball.x += ball_speed_x
-    ball.y += ball_speed_y
-
-    #border collision
-    if ball.top <= 0 or ball.bottom >= screen_height:  #vertical/y axis
-        pygame.mixer.Sound.play(pong_sound)
-        ball_speed_y *= -1
-    if ball.left <= 0:
-        pygame.mixer.Sound.play(score_sound)
-        player_score += 1
-        ball_start()
-    if ball.right >= screen_width:   #horizontal/x axis
-        pygame.mixer.Sound.play(score_sound)
-        opponent_score += 1
-        ball_speed_x *= -1
-    
-    #ball restart
-        ball_start()
-
-    #player collision pygame.mixer.Sound.play(pong_sound)
-    if ball.colliderect(player) and ball_speed_x > 0:
-	    if abs(ball.right - player.left) < 10:
-		    ball_speed_x *= -1	
-	    elif abs(ball.bottom - player.top) < 10 and ball_speed_y > 0:
-		    ball_speed_y *= -1
-	    elif abs(ball.top - player.bottom) < 10 and ball_speed_y < 0:
-		    ball_speed_y *= -1
-
-    if ball.colliderect(opponent) and ball_speed_x < 0:
-	    if abs(ball.left - opponent.right) < 10:
-		    ball_speed_x *= -1	
-	    elif abs(ball.bottom - opponent.top) < 10 and ball_speed_y > 0:
-		    ball_speed_y *= -1
-	    elif abs(ball.top - opponent.bottom) < 10 and ball_speed_y < 0:
-		    ball_speed_y *= -1
-
-def player_animation():
-	player.y += player_speed
-
-	if player.top <= 0:
-		player.top = -1
-	if player.bottom >= screen_height:
-		player.bottom = screen_height -1
-
-def opponent_ai():
-    if opponent.top < ball.y:
-        opponent.top += opponent_speed
-    if opponent.bottom > ball.y:
-        opponent.bottom -= opponent_speed
-    if opponent.top <= 0:
-	    opponent.top = 0
-    if opponent.bottom >= screen_height:
-	    opponent.bottom = screen_height
-
-def ball_start():
-    global ball_speed_y, ball_speed_x
-    ball.center = (screen_width/2, screen_height/2)
-    ball_speed_x *= random.choice((1,-1))
-    ball_speed_y *= random.choice((1,-1))
+import pygame, sys
+import time
+import random
+from pygame import mixer
 
 #general setup
-pygame.mixer.pre_init(44100, -16, 2, 512)
 pygame.init()
-clock = pygame.time.Clock() 
+clock = pygame.time.Clock()
+FPS = 60
+
+#colour
+white = (255,255,255)
+black = (20,20,20)
+red = (255,0,0)
+green = (0,255,0)
+blue = (0, 150, 255)
+
+#snake info
+snake_size = 15
+snake_speed = 15
+
+#font
+message_font = pygame.font.SysFont("freesansbold.ttf", 60)
+score_font = pygame.font.SysFont("freesansbold.ttf", 50)
 
 #screen
-screen_width = 1280
+screen_width = 1080
 screen_height = 960
-screen = pygame.display.set_mode((screen_width,screen_height))
-pygame.display.set_caption('Pong')
+screen = pygame.display.set_mode((screen_width, screen_height))
+pygame.display.set_caption('Snake')
 
-#rectangle (game)
-ball = pygame.Rect(screen_width/2 - 15,screen_height/2 - 15,30,30)
-player = pygame.Rect(screen_width - 20,screen_height/2 - 70, 10, 140)
-opponent = pygame.Rect(10, screen_height/2 - 70, 10, 140)
+#score
+def print_score(score):
+    text = score_font.render("Score: " + str(score), True, white)
+    screen.blit(text, [0,0])
 
-#colour ref
-bg_color = pygame.Color('grey12')
-light_grey = (200,200,200)
-
-#speed
-ball_speed_x = 7 * random.choice((1,-1))
-ball_speed_y = 7 * random.choice((1,-1))
-player_speed = 0
-opponent_speed = 8
-
-#text
-player_score = 0
-opponent_score = 0
-game_font = pygame.font.Font("freesansbold.ttf", 32)
+#snake render
+def draw_snake(snake_size, snake_pixels):
+    for pixel in snake_pixels:
+        pygame.draw.rect(screen, blue, [pixel[0], pixel[1], snake_size, snake_size])
 
 #sound
-pong_sound = pygame.mixer.Sound("pong (1).ogg")
-score_sound = pygame.mixer.Sound("score.ogg")
+mixer.init()
+mixer.music.load("MAIN.mp3")
+mixer.music.play(-1)
+death = pygame.mixer.Sound("died.mp3")
 
-#loop
-while True:
-    #input
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
-    
-    #movement
-    if event.type == pygame.KEYDOWN:
-        if event.key == pygame.K_UP:
-            player_speed -= 0.5
-        
-    if event.type == pygame.KEYDOWN:
-        if event.key == pygame.K_DOWN:
-            player_speed += 0.5
-          
-        
-    #logic
-    ball_animation()
-    player_animation()
-    opponent_ai()
-    
-   
-    #visual
-    screen.fill(bg_color)
-    #objects (drawn)
-    pygame.draw.rect(screen,light_grey, player)
-    pygame.draw.rect(screen,light_grey, opponent)
-    pygame.draw,ellipse(screen, light_grey, ball)
-    pygame.draw.aaline(screen, light_grey, (screen_width/2,0), (screen_width/2, screen_height))
-    #text visual
-    player_text = game_font.render(f"{player_score}", False, light_grey)
-    screen.blit(player_text,(660,470))
-    opponent_text = game_font.render(f"{opponent_score}", False, light_grey)
-    screen.blit(opponent_text,(605,470))
+def run_game():
 
-    #window update
-    pygame.display.flip()
-    clock.tick(60) #ticks per sec 
+    game_over = False
+    game_close = False
+
+    
+
+    x = screen_width /4
+    y = screen_height / 4
+
+    #snake speed
+    x_speed = 0
+    y_speed = 0
+
+    #snake size
+    snake_pixels = []
+    snake_length = 1
+
+    #food spawn
+    target_food_x = round(random.randrange(0, screen_width-snake_size) / 15.0) * 15.0
+    target_food_y = round(random.randrange(0, screen_height-snake_size) / 15.0) * 15.0
+    
+    #loop
+    while not game_over:
+
+
+        while game_close:
+            screen.fill(black)
+            game_over_message = message_font.render("Game Over", True, red,)
+            pygame.mixer.Sound.play(death)
+            mixer.music.stop()
+            screen.blit(game_over_message, [screen_width / 10, screen_height / 10])
+            print_score(snake_length - 1)
+            pygame.display.update()
+
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q:
+                        game_over= True
+                        game_close = False
+                    if event.key == pygame.K_r:
+                        run_game()
+                if event.type == pygame.QUIT:
+                    game_over = True
+                    game_close = False
+                
+                
+
+
+
+        
+        
+        for event in pygame.event.get():
+            
+            if event.type == pygame.QUIT:
+                game_over = True
+                pygame.quit()
+                sys.exit()
+
+            #movement
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    x_speed = -snake_size
+                    y_speed = 0
+            
+                if event.key == pygame.K_RIGHT:
+                    x_speed = snake_size
+                    y_speed = 0
+            
+                if event.key == pygame.K_UP:
+                    x_speed = 0
+                    y_speed = -snake_size
+            
+                if event.key == pygame.K_DOWN:
+                    x_speed = 0
+                    y_speed = snake_size
+        
+        if x >= screen_width or x < 0 or y >= screen_height or y < 0:
+            game_close = True
+
+        x += x_speed
+        y += y_speed
+
+        screen.fill(black)
+        pygame.draw.rect(screen, green, [target_food_x, target_food_y, snake_size, snake_size])
+        
+        snake_pixels.append([x,y])
+
+        if len(snake_pixels) > snake_length:
+            del snake_pixels[0]
+
+        for pixel in snake_pixels[:-1]:
+            if pixel == [x,y]:
+                game_close = True
+
+        draw_snake(snake_size, snake_pixels)
+        print_score(snake_length - 1)
+
+        pygame.display.update()
+        if x == target_food_x and y == target_food_y:
+            target_food_x = round(random.randrange(0, screen_width-snake_size) / 15.0) * 15.0
+            target_food_y = round(random.randrange(0, screen_height-snake_size) / 15.0) * 15.0
+            snake_length += 1
+
+        clock.tick(snake_speed)
+
+    pygame.display.flip
+    pygame.quit()
+    sys.exit()
+    
+run_game()
